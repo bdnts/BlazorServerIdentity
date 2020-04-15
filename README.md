@@ -1,6 +1,10 @@
 # BlazorServerIdentity
 Project demonstrating scaffolding MS Identity into a Blazor Server project and converting the scaffolded pages to Blazor/Razor pages
 
+The simplest form of Identity within Blazor Server is Individual User Accounts.  
+However, resulting Registration and Login/Logout flows are unaccessible within a library.
+Therefore this project will scaffold the same flows and then convert them into Blazor pages.
+
 ## Base00.00.00
 Base version
 * Create a new Blazor Server project in Visual Studio
@@ -92,6 +96,9 @@ PM>
 ```
 
 ### Test
+A lot of mistakes can happen along the way, so it is important to test, take checkpoints and be sure everything is working before moving forward.
+
+
 #### Registration Flow
 * Launch the application
 * The typical "Hello World" appears.
@@ -130,5 +137,92 @@ PM>
 > Explore as you wish, and proceed when ready.
 
 
-## Base 01.01.00
+## Base 01.01.00 Blazor A&A aware 
+Before jumping into making the flows Blazorized, need to make Blazor Authenticaion and Authorization aware.
+* The guidance used in this project is at:
+  * https://docs.microsoft.com/en-us/aspnet/core/security/blazor/?view=aspnetcore-3.1
+  * See it for explanations of the steps to follow. 
+* For guidance connecting to Azure Active Directory (AAD)
+  * https://docs.microsoft.com/en-us/aspnet/core/security/blazor/server?view=aspnetcore-3.1&tabs=visual-studio
+* For connecting with Azure Active Directory Business 2 Consumer (AADB2C)
+  * https://docs.microsoft.com/en-us/azure/active-directory-b2c/
+
+### Update our packages
+This project created using 3.1.1 packages, even though the latest were 3.1.3.  
+Update the packages using NuGet Manager.  Compile and retest.
+
+### App.razor
+* Wrap the Router in <CascadingAuthenticationState>
+* Use an AuthorizeRouteView of the layout
+```
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(Program).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p>Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+```
+
+### Shared/MainLayout.razor
+* Add auth class next to top-row class
+* Add element ```<LoginDisplay>``` in the top row div
+```
+@inherits LayoutComponentBase
+
+<div class="sidebar">
+    <NavMenu />
+</div>
+
+<div class="main">
+    <div class="top-row px-4 auth">
+        <LoginDisplay />
+        <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
+    </div>
+
+    <div class="content px-4">
+        @Body
+    </div>
+</div>
+```
+
+### Shared/LoginDisplay -- Create
+In the Shared folder, create razor page LoginDisplay
+```
+<AuthorizeView>
+    <Authorized>
+        <a href="Identity/Account/Manage">Hello, @context.User.Identity.Name!</a>
+        <form method="post" action="Identity/Account/LogOut">
+            <button type="submit" class="nav-link btn btn-link">Log out</button>
+        </form>
+    </Authorized>
+    <NotAuthorized>
+        <a href="Identity/Account/Register">Register</a>
+        <a href="Identity/Account/Login">Log in</a>
+    </NotAuthorized>
+</AuthorizeView>
+```
+
+* *App.razor* is the element name for the entire Blazor application.  
+Wrapping it in ```<CascadingAuthenticationState>``` make authentication state informatio available to the entire application.
+* *MainLayout.razor* inserts a LoginDisplay element into the top row of our UI.
+* *LoginDisplay.razor* creates the top row menu for our UI on all pages. 
+    * If you are authorized, it displays ```Hello username Logout```
+    * If not authorized, it displays ```Register Log in```
+
+### Compile and Test
+User can now Register and Login on the Index screen.
+>![Blazor Server Identity B 01](BlazorServerIdentity/wwwroot/images/BlazorServerIdentityB-01.PNG)
+* Once logged in, can see username and Logout links
+![Blazor Server Identity B 02](BlazorServerIdentity/wwwroot/images/BlazorServerIdentityB-02.PNG)
+
+### Conclusion
+These 3 files make up the crucial pieces to make a Blazor Server app A&A aware.
+However, the Registration and L&L flows are still Asp.Net Core pages.
+
 
