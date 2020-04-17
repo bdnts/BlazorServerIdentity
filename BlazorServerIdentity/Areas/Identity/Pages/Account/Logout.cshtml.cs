@@ -17,18 +17,17 @@ namespace BlazorServerIdentity.Areas.Identity.Pages.Account
         private readonly SignInManager<BlazorServerIdentityUser> _signInManager;
         private readonly ILogger<LogoutModel> _logger;
 
-        public LogoutModel(SignInManager<BlazorServerIdentityUser> signInManager, ILogger<LogoutModel> logger)
+        public LogoutModel(
+			SignInManager<BlazorServerIdentityUser> signInManager,
+			 ILogger<LogoutModel> logger)
         {
             _signInManager = signInManager;
             _logger = logger;
         }
 
-        public void OnGet()
+        public async Task<IActionResult> OnGetAsync(string returnUrl = null)
         {
-        }
-
-        public async Task<IActionResult> OnPost(string returnUrl = null)
-        {
+            returnUrl ??= Url.Content("~/");
             await _signInManager.SignOutAsync();
             _logger.LogInformation("User logged out.");
             if (returnUrl != null)
@@ -37,7 +36,7 @@ namespace BlazorServerIdentity.Areas.Identity.Pages.Account
             }
             else
             {
-                return RedirectToPage();
+                return RedirectToAction("/");
             }
         }
     }
