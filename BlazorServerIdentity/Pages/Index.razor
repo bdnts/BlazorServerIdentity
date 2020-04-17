@@ -8,14 +8,23 @@ Welcome to your new app.
 
 <SurveyPrompt Title="How is Blazor working for you?" />
 
-<button class="btn btn-primary" @onclick="@SignIn">Sign In</button>
+<div class="container">
+    <div class="row">
+        <div class="col text-right">
+            <button class="btn btn-primary" @onclick="@SignIn">Sign In</button>
+        </div>
+        <div class="col text-left">
+            <button class="btn btn-primary" @onclick="@SignOut">Sign Out</button>
+        </div>
+    </div>
+</div>
 
 <AuthorizeView>
     <Authorized>
-        You are successfully authorized
+        <p class="text-primary text-center"> You are successfully authorized</p>
     </Authorized>
     <NotAuthorized>
-        <p style="color: red;">You are not signed in</p>
+        <p class="text-danger text-center"> You are not signed in</p>
     </NotAuthorized>
 </AuthorizeView>
 
@@ -24,4 +33,10 @@ Welcome to your new app.
     {
         navman.NavigateTo("SignIn");
     }
+
+    public void SignOut()
+    {
+        navman.NavigateTo("Identity/Account/Logout", forceLoad: true);
+    }
+
 }
