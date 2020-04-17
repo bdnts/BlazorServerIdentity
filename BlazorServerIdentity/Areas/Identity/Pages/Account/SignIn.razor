@@ -1,0 +1,175 @@
+﻿@page "/SignIn"
+@using System.ComponentModel.DataAnnotations;
+@using Microsoft.AspNetCore.Identity;
+@using BlazorServerIdentity.Areas.Identity.Data;
+@using Microsoft.AspNetCore.WebUtilities;
+@inject NavigationManager navman;
+@*Not supported in Blazor*@
+@inject UserManager<BlazorServerIdentityUser> _userManager
+
+<div class="container text-center">
+    <EditForm Model="@Input" OnValidSubmit="@ValidSubmit" OnInvalidSubmit="@InvalidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <hr />
+        <div class="container px-1" style="width: 55%; margin-left: 75px;">
+            <div class="form-group row text-right ">
+                <div class="col">
+                    <label>
+                        Email Address
+                        <InputText @bind-Value="Input.Email" />
+                    </label>
+                </div>
+            </div>
+            <div class="form-group row text-right">
+                <div class="col">
+                    <label>
+                        Password
+                        <InputText type="password" @bind-Value="Input.Password" />
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="form-group row">
+            <div class="col">
+                <label>
+                    Remember Me?
+                    <InputCheckbox @bind-Value="Input.RememberMe" />
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col text-right">
+                <button type="submit" class="btn btn-primary">Sign in</button>
+            </div>
+            <div class="col text-left">
+                <button type="button" class="btn btn-danger" @onclick="Cancel">Cancel</button>
+            </div>
+
+        </div>
+    </EditForm>
+    <hr />
+    @if (isResponseState)
+        @if (isSuccessful)
+        {
+            <h1 class="text-primary">Success!</h1>
+        }
+        else
+        {
+            <h1 class="text-danger">An Error Occurred</h1>
+        }
+</div>
+
+
+@code {
+
+    private bool isSuccessful;
+    private bool isResponseState;
+
+
+    // https://chrissainty.com/working-with-query-strings-in-blazor/
+    protected override void OnInitialized()
+    {
+        // Processes any attached query strings
+        // Since NavigationManager is not Request-Response, it calls Login, and then exits.
+        // When Login completes, it calls back to SignIn, but with query parameters.  
+        // This section processes those parameters to determine if success or failure.  
+        // If there are no parameters, this is a request call, not a response call.
+        base.OnInitialized();
+
+        var uri = navman.ToAbsoluteUri(navman.Uri);
+
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("isSuccessful", out var _boolVar))
+        {
+            isSuccessful = Convert.ToBoolean(_boolVar);
+            isResponseState = true;
+        }
+        else
+            isResponseState = false;
+    }
+
+    // Borrowed from Login.cshtml
+    public class InputModel
+    {
+        [Required] // @using System.ComponentModel.DataAnnotations;
+        [EmailAddress]
+        public string Email { get; set; }
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; }
+
+        [Display(Name = "Remember me?")]
+        public bool RememberMe { get; set; }
+    }
+
+    InputModel Input = new InputModel();
+
+    public void ValidSubmit()
+    {
+        #region Unsupported
+        // This does work, but is unsupported in Blazor
+        //var user = await _userManager.FindByNameAsync(Input.Email);
+
+        //if (user == null)
+        //{
+        //    //ShowError(1);
+        //    return;
+        //}
+
+        //var result = await _userManager.CheckPasswordAsync(user, Input.Password);
+        //if (!result)
+        //{
+        //    //ShowError(11);
+        //    return;
+        //}
+        //var resultSignIn = await _signInManager.PasswordSignInAsync(user, Input.Password, true, false);
+        //if (resultSignIn.Succeeded)
+        //    // Event Callback for success
+        //else
+        //{
+        //      // Event Callback for error
+        //}
+        #endregion
+
+        #region Working but unsecure
+        // This section uses NavigationManager to call a modified Login page.
+        // NavigationManager can call into Razor Pages from Blazor components and set the Identity tokens.
+        // It is simple, effective, and completes the Identity system in Blazor Server.
+        // Other methods, like Web APIs and Bearer Tokens can also do the same, but require significant more effort.
+        // Other methods are Production quality, this is not.  
+        // For Educational purposes, prototyping, solo development,  it is probably good enough.
+        // There are many ways to improve this, sending the parameters as a Json object for example,
+        // Also, DataProtection can be applied.  But those still don't make this approach Production quality.
+
+        //Here are the range of possibilities from NavigationManager
+        var v1 = navman.Uri;
+        var v2 = navman.BaseUri;
+        var v3 = navman.ToBaseRelativePath(v1);
+        var v4 = navman.ToAbsoluteUri(v3);
+        var returnUrl = v4.AbsolutePath;
+
+        // Query string information from https://www.mikesdotnetting.com/article/340/working-with-query-strings-in-blazor
+        var query = new Dictionary<string, string>
+        {
+            { "returnUrl", returnUrl },
+            { "email", Input.Email },
+            { "password", Input.Password },
+            { "rememberme", Input.RememberMe.ToString() }
+        };
+        var requestUri = QueryHelpers.AddQueryString("Identity/Account/Login", query);
+
+        navman.NavigateTo(requestUri, true);
+        #endregion
+    }
+
+    public void InvalidSubmit()
+    {
+        return;
+    }
+
+    public void Cancel()
+    {
+        navman.NavigateTo("/");
+    }
+}
