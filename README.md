@@ -237,7 +237,7 @@ There are numerous, high quality technologies available for Production quality I
 Again, this project seeks to have Identity in Blazor stood up as easily and effortlessly as an Asp.Net Core project does. 
 While not quite out of the box as Asp.Net Core, and with contributions from a lot of people, here is a workable solution.
 
-### Base 02.01.00 SignIn
+## Base 02.01.00 SignIn
 NavigationManager is the recommended class for navigating between pages in Blazor.
 It can also navigate to Razor Pages and other websites.  It is not an Request/Response paradigm.  More like a Redirect.
 It also has the ```forceload``` option that when set to ```true```, to quote the documentation:
@@ -251,7 +251,7 @@ As mention above, there are other, better ways to do this, but this is very quic
 A downside is that NavigationManager can only do a GET.  So the Razor Pages will have be tweaked (some same kludged) to be made to work.
 But for the goals of this project, that is acceptable.
 
-#### Login.cshtml.cs
+### Login.cshtml.cs
 * Open *Areas/Identity/Pages/Account/Login.cshtml.cs*
 * Add `using Microsoft.AspNetCore.WebUtilities;`
   * This library makes building Uris easier.
@@ -320,7 +320,7 @@ But for the goals of this project, that is acceptable.
   * If the signin fails, a return url query parameters indicating failure is returned.  Likewise if there is some unknown error.
 * *Login.cshtml* can be left untouched.
   
-#### SignIn.razor
+### SignIn.razor
 * Create *Areas/Identity/Pages/Account/SignIn.razor*
 * It was created in this folder to keep it part of Identity.  This is a generic component related to Identity, so it should stay in that Area.
 * *SignIn.razor* was originally constructed as 1:1 replacement of *Login.cshtml.cs* 
@@ -334,7 +334,7 @@ It was brought back for this project, the original code left behind but commente
 * The QueryHelper class is used to build a property 
 * Lastly the call to `NavigationManager.NavigateTo()`
   
-##### Http Client
+#### Http Client
 Instead of Navigation Manager, HttpClient could make the same request, and wait for the reponse. 
 This would make things much simpler.  Also, it can do the POST, instead, simplfying the work in *Login.cshtml.cs*
 Lastly, it can deal with the XSRF token to prevent forgeries.  All the way around a better solution.
@@ -342,7 +342,7 @@ But, and and of course there is a but, it doesn't work.
 It won't push through the browser like `forceload=true` does, therefore the browser never gets the authentication cookie, and Blazor never sees Authentication.
 If anyone knows how to get HttpClient to mimic NavigationManager in this regard, I'm all for it.
 
-#### Index.razor
+### Index.razor
 Need a way to call SignIn without destroying the existing systems.
 Going to make some changes to *Index.razor* so that SignIn can be called.
 
@@ -351,7 +351,7 @@ Going to make some changes to *Index.razor* so that SignIn can be called.
 * An `<AuthorizeView>` view block is created to show if the user was authorized or not.  Every coal mine needs a canary.
 * The `SignIn()` method invokes NavigationManager when clicked.
 
-#### Test
+### Test
 * There should already be a Registered account from earlier. 
 Fire up the application and we see a new HelloWorld, with SignIn Button and Authentication Status
 > ![Blazor Server Identity2 01](BlazorServerIdentity/wwwroot/images/BlazorServerIdentity2-01.PNG)
@@ -369,18 +369,18 @@ Fire up the application and we see a new HelloWorld, with SignIn Button and Auth
   * The *Hello* message is still present.
   * And next to the SignIn button our canary is alive and chirping that successful authention has occured and the user is authorized.
 
-#### Conclusion
+### Conclusion
 It is a grade C solution.  It works, fully functional, meets the project goals, but lacks in sophistication.  
 
-### Base 02.02.00 SignOut
+## Base 02.02.00 SignOut
 
-#### Logout.cshtml.cs
+### Logout.cshtml.cs
 * A small series of changes are necessary
 * Delete the existing `OnGet()`
 * Change the `OnPost` method to name to `OnGetAsync`
 * Change `return RedirectToPage();` to `return RedirectToAction("/");`
 
-#### Index.razor
+### Index.razor
 * Need a new button for Signout.  But will add some flourish by putting both buttons into a Grid and pulling them into the center.
 ```
 <div class="container">
@@ -412,9 +412,167 @@ It is a grade C solution.  It works, fully functional, meets the project goals, 
         navman.NavigateTo("Identity/Account/Logout", forceLoad: true);
     }
 ```
-* Whoa!  Where is the call to SignOut.razor component?  Do need it. 
+* Whoa!  Where is the call to SignOut.razor component?  Don't need it. 
 * NavigationManager can call our tweaked (this one is not a kludge) Logout.cshtml.cs directly. 
 The outcome is displaid on the HelloWorld page: `You are not signed in` or `You are successfully authorized`  
 
- 
+ ### Conclusion
+The most difficult part of using the Scaffoled Razor pages in converting Login to SignUp.razor.
+Utilizing NavigationManager and small changes to Login.cshtml.cs and Logout.cshtml.cs can do the work for Blazor pages. 
+Now, it is possible to fully explore Blazor's Authentication and Authorization capabilities without having to bolt on other systems.
 
+## Base 03.00.00 The Rest
+The standard enrollment flow is Sign Up - Sign In - Sign Out (SUSISO).  SISO has actually been finished. 
+Now it is time to finish the SU flow.  From there all the rest of the Scaffold can be converted over time.
+But if SUSISO is not present, can't do proper Authentication & Authorization.  Let's move and finish The Rest
+
+## Base 03.01.00 Sign Up
+Sign Up generally comes in at least 3 parts.
+1. Sign Up information to create the basic account.  
+   1. A UserName (typically but not always an email address) and a password.
+   2. Sometimes more information is request at this point, Address, Company, etc., but not always.
+2. Confirmation.  If an email or mobile number is provided there is a flow steps to verify a human is present.
+3. Profile completion.  Once signed up, a site usually request additional data to complete the user's profile.
+
+In this section the focus will be on these 3 activities.
+
+### SignUp.razor
+This will be the Blazor equivalent of *Register* Page.  
+
+* Create *SignUp.razor*
+* Copy all of *Register.cshtml* and *Register.cshtml.cs* into *SignUp.razor*
+* I won't go through all the step finish *SignUp.razor*, you can review the commit history if you like.
+* But I will comment on each of the sections of the final version.
+* As *SignUp.razor* evolved I decided to cover not just *Register.cshtml/.cs* but also *RegisterConfirmation.cshtml/.cs*
+It just didn't make sense to keep them seperate.
+
+#### Assemblies
+```
+@page "/SignUp"
+
+@using System;
+@using System.Collections.Generic;
+@using System.ComponentModel.DataAnnotations;
+@using System.Linq;
+@using System.Text;
+@using System.Text.Encodings.Web;
+@using System.Threading.Tasks;
+@using Microsoft.AspNetCore.Authentication;
+@using Microsoft.AspNetCore.Authorization;
+@using BlazorServerIdentity.Areas.Identity.Data;
+@using Microsoft.AspNetCore.Identity;
+@using Microsoft.AspNetCore.Identity.UI.Services;
+@using Microsoft.AspNetCore.Mvc;
+@using Microsoft.AspNetCore.Mvc.RazorPages;
+@using Microsoft.AspNetCore.WebUtilities;
+@using Microsoft.Extensions.Logging;
+```
+* Just moved these from the code section to the Razor section and added the @ symbol.
+
+#### Dependency Injection
+```
+@inject SignInManager<BlazorServerIdentityUser> _signInManager;
+@inject UserManager<BlazorServerIdentityUser> _userManager;
+@inject ILogger<SignUp> _logger;
+@inject IEmailSender _emailSender;
+@inject NavigationManager navman;
+```
+* Converted the DI syntax from C# to Razor
+* * Added NavigationManager to the DI list
+
+#### EditForm
+```
+            <EditForm Model="Input" OnValidSubmit="@OnValidSubmit" OnInvalidSubmit="@OnInvalidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+```
+* Converted the legacy form into a new Blazor EditForm
+  * Just search for Blazor EditForm to find all the details
+
+##### InputText
+* A subcomponent of Editform, InputText replace the `<input>` tags 
+
+#### showConfirmation
+```
+@if (showConfirmation)
+{
+    @if (!string.IsNullOrEmpty(EmailConfirmationUrl))
+    {
+        <p>
+            This app does not currently have a real email sender registered, see <a href="https://aka.ms/aspaccountconf">these docs</a> for how to configure a real email sender.
+            Normally this would be emailed: <a id="confirm-link" href="@EmailConfirmationUrl">Click here to confirm your account</a>
+        </p>
+    }
+    else
+    {
+        <p>
+            Please check your email to confirm your account.
+        </p>
+    }
+}
+```
+* This section contains the functionality found in *RegisterConfirmation.cshtml/.cs*  
+ Specifically if there is a Confirmation screen to show, it checks to see if an email confirmation screen is necessary.
+
+#### OnValidSubmit
+* Replaced OnGetAsync with OnValidSubmit.  This method will process the form data when the button is clicked
+* I inverted the logic after calling `_userManager.CreateAsync()`  If there is an error, exit.  
+But the coding is still much the same.
+* Generating the confirmation email is a little cleaner using the `QueryHelpers` 
+  * A big difference is *Register.cshtml.cs* concludes with a `Redirect()`.  
+  * SignUp.razor sets the `showConformation=true` flag.  
+  Blazor rerenders the tree, and displays the Confirmation language from *RegisterConfirmation.cshtml*  Blazor coolness.
+
+
+### SignUpConfirmEmail.razor
+* The confirmation link from SignUp needs a target.  In the Razor pages that was *ConfirmEmail.cshtml/.cs*  *SignupConfirmEmail.razor* assumes that role now.
+* After processing the confirmation request, a Thank You message is displayed.  Signing in to the system is the next logical step.
+* Being that this is Blazor, that isn't the end of the story. 
+```
+<hr />
+<SignIn></SignIn>
+@code {      
+```
+ The `<SignUp />` component has been added to the razor code section. 
+ Now the Sign In dialog is displayed directly for the user to complete the Sign Up by completing their Profile.
+ Component based programming!  What a concept! (IMS COBOL programmers are rolling over in their grames!  Not to mention TPF gurus! lol!)
+
+#### OnInitialized
+```
+    protected override void OnInitialized()
+    {
+        // TryGetQueryString is an Extension to Navigation Manager, courtesy of Chris Sainty
+        // https://chrissainty.com/working-with-query-strings-in-blazor/
+        navman.TryGetQueryString<string>("userId", out userId);
+        navman.TryGetQueryString<string>("code", out code);
+        base.OnInitialized();
+    }
+```
+* This block of code plucks out the values of `userid` and `code`, inserting them into simililarly named properties.
+* For the uninitiated (versus the OnInitialized), Extensions are little bit of genuis that takes sealed (or unsealed) objects and adds new methods to them.
+In this case, the repetitive code in *SignIn.razor* to deal with Query Strings has been herded into `TryGetQueryString()` courtesty of Chris Sainty.
+This could have been used earlier, but the journey is half the fun of learning.  Unless you like to skip to the end of the book.
+
+
+#### OnParameterSetAsync()  
+* See **Blazor Lifecycle** for information on the order and frequency that the LifeCycle methods are called
+  * https://docs.microsoft.com/en-us/aspnet/core/blazor/lifecycle?view=aspnetcore-3.1
+* Now that `OnInitialized()` has completed, for the first time,  `userid` and `code` are set, `OnParameterSetAsync()` will fire.
+* The rest is explained in the code comments.
+
+### Conclusion
+While not a 1:1 conversion of *Register* into *SignUp* There are lots of oppotunities to utilize Blazor capabilities to improve the product and experience.
+
+### Postscript
+Took the opportunity to upgrade other components along the way.  
+
+#### Login.cshtml.cs and Signup.razor
+* Changed Login.cshtml.cs to send back different messages for different errors encountered.
+* Changed Signup.razor to display those messages.
+* A lot more could be done regarding error handling and defensive programming.  But this isn't for Production. 
+
+#### Index.razor
+* Added some Icons to the buttons.
+
+#### LoginDisplay.razor
+* Added a `NavLink` to display `SignUp` in the top menu bar.
