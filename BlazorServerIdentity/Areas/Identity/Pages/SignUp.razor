@@ -27,7 +27,7 @@
 <div class="container text-center">
     <div class="row">
         <div class="col-md-4">
-            <EditForm Model="Input" OnValidSubmit="@OnValidSubmit" OnInvalidSubmit="@InvalidSubmit">
+            <EditForm Model="Input" OnValidSubmit="@OnValidSubmit" OnInvalidSubmit="@OnInvalidSubmit">
                 <DataAnnotationsValidator />
                 <ValidationSummary />
                 <h4>Create a new account.</h4>
@@ -90,8 +90,6 @@
 
 @code {
 
-    [AllowAnonymous]
-
     public InputModel Input { get; set; } = new InputModel();
 
     public string ReturnUrl { get; set; }
@@ -125,47 +123,61 @@
         ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
     }
 
-    public void OnValidSubmit()
+    /// <summary>
+    /// Technically, UserManager and SignInManager are not supported in Razor. 
+    /// And SignInManager.SignInAsync definitely won't work.
+    /// But they seem to work the rest of the time.  Let's give them a chance
+    /// </summary>
+    public async void OnValidSubmit()
     {
-        returnUrl = returnUrl ?? Url.Content("~/");
+        //Url is part of PageModel, we'll use an alternative.
+        //ReturnUrl = ReturnUrl ?? Url.Content("~/");
+        ReturnUrl = ReturnUrl ?? "/";
+
         ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
-        if (ModelState.IsValid)
+        //if (ModelState.IsValid)
+        //{
+
+        // Sign up the new user
+        var user = new BlazorServerIdentityUser { UserName = Input.Email, Email = Input.Email };
+        var result = await _userManager.CreateAsync(user, Input.Password);
+        if (result.Succeeded)
         {
-            var user = new BlazorServerIdentityUser { UserName = Input.Email, Email = Input.Email };
-            var result = await _userManager.CreateAsync(user, Input.Password);
-            if (result.Succeeded)
-            {
-                _logger.LogInformation("User created a new account with password.");
+            _logger.LogInformation("User created a new account with password.");
 
-                var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-                var callbackUrl = Url.Page(
-                "/Account/ConfirmEmail",
-                pageHandler: null,
-                values: new { area = "Identity", userId = user.Id, code = code },
-                protocol: Request.Scheme);
+            // Now set about mimicking sending a confirmation email
+            // But wait, there is a better.  With Blazor, I can just chain to another component to do this.
+            // For now, will deprecate everything else.
 
-                await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-                $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+            //    var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            //    code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+            //    var callbackUrl = Url.Page(
+            //    "/Account/ConfirmEmail",
+            //    pageHandler: null,
+            //    values: new { area = "Identity", userId = user.Id, code = code },
+            //    protocol: Request.Scheme);
 
-                if (_userManager.Options.SignIn.RequireConfirmedAccount)
-                {
-                    return RedirectToPage("RegisterConfirmation", new { email = Input.Email });
-                }
-                else
-                {
-                    await _signInManager.SignInAsync(user, isPersistent: false);
-                    return LocalRedirect(returnUrl);
-                }
-            }
-            foreach (var error in result.Errors)
-            {
-                ModelState.AddModelError(string.Empty, error.Description);
-            }
+            //    await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
+            //    $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+
+            //    if (_userManager.Options.SignIn.RequireConfirmedAccount)
+            //    {
+            //        return RedirectToPage("RegisterConfirmation", new { email = Input.Email });
+            //    }
+            //    else
+            //    {
+            //        await _signInManager.SignInAsync(user, isPersistent: false);
+            //        return LocalRedirect(returnUrl);
+            //    }
+            //}
+            //foreach (var error in result.Errors)
+            //{
+            //    ModelState.AddModelError(string.Empty, error.Description);
+            //}
         }
 
-        // If we got this far, something failed, redisplay form
-        return Page();
+        //// If we got this far, something failed, redisplay form
+        //return Page();
     }
 
     public void OnInvalidSubmit()
