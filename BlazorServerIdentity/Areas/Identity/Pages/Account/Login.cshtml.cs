@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace BlazorServerIdentity.Areas.Identity.Pages.Account
 {
@@ -22,7 +23,8 @@ namespace BlazorServerIdentity.Areas.Identity.Pages.Account
         private readonly SignInManager<BlazorServerIdentityUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
 
-        public LoginModel(SignInManager<BlazorServerIdentityUser> signInManager, 
+        public LoginModel(
+			SignInManager<BlazorServerIdentityUser> signInManager, 
             ILogger<LoginModel> logger,
             UserManager<BlazorServerIdentityUser> userManager)
         {
@@ -55,22 +57,22 @@ namespace BlazorServerIdentity.Areas.Identity.Pages.Account
             public bool RememberMe { get; set; }
         }
 
-        public async Task OnGetAsync(string returnUrl = null)
-        {
-            if (!string.IsNullOrEmpty(ErrorMessage))
-            {
-                ModelState.AddModelError(string.Empty, ErrorMessage);
-            }
+        //public async Task OnGetAsync(string returnUrl = null)
+        //{
+        //    if (!string.IsNullOrEmpty(ErrorMessage))
+        //    {
+        //        ModelState.AddModelError(string.Empty, ErrorMessage);
+        //    }
 
-            returnUrl = returnUrl ?? Url.Content("~/");
+        //    returnUrl = returnUrl ?? Url.Content("~/");
 
-            // Clear the existing external cookie to ensure a clean login process
-            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        //    // Clear the existing external cookie to ensure a clean login process
+        //    await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+        //    ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
-            ReturnUrl = returnUrl;
-        }
+        //    ReturnUrl = returnUrl;
+        //}
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
@@ -105,5 +107,53 @@ namespace BlazorServerIdentity.Areas.Identity.Pages.Account
             // If we got this far, something failed, redisplay form
             return Page();
         }
+
+        public async Task<IActionResult> OnGetAsync(string returnUrl, string email, string password, string rememberme)
+        {
+            returnUrl = returnUrl ?? Url.Content("~/");
+            var query = new Dictionary<string, string>
+            {
+                { "isSuccessful", "true" },
+                { "message", "Success" },
+            };
+
+
+            if (Input == null) Input = new InputModel() { Email = email, Password = password, RememberMe = Convert.ToBoolean(rememberme) };
+
+            if (ModelState.IsValid)
+            {
+                // This doesn't count login failures towards account lockout
+                // To enable password failures to trigger account lockout, set lockoutOnFailure: true
+                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("User logged in.");
+                    var retUrl = QueryHelpers.AddQueryString(returnUrl, query);
+
+                    return LocalRedirect(retUrl);
+                }
+                if (result.RequiresTwoFactor)
+                {
+                    return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+                }
+                if (result.IsLockedOut)
+                {
+                    _logger.LogWarning("User account locked out.");
+                    return RedirectToPage("./Lockout");
+                }
+                else
+                {
+                    query["isSuccessful"] = "false";
+                    query["message"] = "General Error";
+                    _logger.LogInformation("Login unsuccessful, General Error");
+                    var retUrl = QueryHelpers.AddQueryString(returnUrl, query);
+                    return LocalRedirect(retUrl);
+                }
+            }
+
+            // If we got this far, something failed, redisplay form
+            return Page();
+        }
+
     }
 }
