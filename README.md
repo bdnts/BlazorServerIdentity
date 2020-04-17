@@ -371,3 +371,50 @@ Fire up the application and we see a new HelloWorld, with SignIn Button and Auth
 
 #### Conclusion
 It is a grade C solution.  It works, fully functional, meets the project goals, but lacks in sophistication.  
+
+### Base 02.02.00 SignOut
+
+#### Logout.cshtml.cs
+* A small series of changes are necessary
+* Delete the existing `OnGet()`
+* Change the `OnPost` method to name to `OnGetAsync`
+* Change `return RedirectToPage();` to `return RedirectToAction("/");`
+
+#### Index.razor
+* Need a new button for Signout.  But will add some flourish by putting both buttons into a Grid and pulling them into the center.
+```
+<div class="container">
+    <div class="row">
+        <div class="col text-right">
+            <button class="btn btn-primary" @onclick="@SignIn">Sign In</button>
+        </div>
+        <div class="col text-left">
+            <button class="btn btn-primary" @onclick="@SignOut">Sign Out</button>
+        </div>
+    </div>
+</div>
+```
+* Lets punch up our status messages with some more color
+```
+<AuthorizeView>
+    <Authorized>
+        <p class="text-primary text-center"> You are successfully authorized</p>
+    </Authorized>
+    <NotAuthorized>
+        <p class="text-danger text-center"> You are not signed in</p>
+    </NotAuthorized>
+</AuthorizeView>
+```
+* Lastly, add a method to execute when the button is clicked.
+```
+     public void SignOut()
+    {
+        navman.NavigateTo("Identity/Account/Logout", forceLoad: true);
+    }
+```
+* Whoa!  Where is the call to SignOut.razor component?  Do need it. 
+* NavigationManager can call our tweaked (this one is not a kludge) Logout.cshtml.cs directly. 
+The outcome is displaid on the HelloWorld page: `You are not signed in` or `You are successfully authorized`  
+
+ 
+
