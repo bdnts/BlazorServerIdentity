@@ -21,6 +21,7 @@
 @inject UserManager<BlazorServerIdentityUser> _userManager;
 @inject ILogger<SignUp> _logger;
 @inject IEmailSender _emailSender;
+@inject NavigationManager navman;
 
 <h1 class="text-center">Sign Up</h1>
 
@@ -41,13 +42,13 @@
                 <div class="form-group">
                     <label>
                         Password
-                        <InputText @bind-Value="Input.Password" />
+                        <InputText @bind-Value="Input.Password" type="password"/>
                     </label>
                 </div>
                 <div class="form-group">
                     <label>
                         Confirm Password
-                        <InputText @bind-Value="Input.ConfirmPassword" />
+                        <InputText @bind-Value="Input.ConfirmPassword" type="password"/>
                     </label>
                 </div>
                 <button type="submit" class="btn btn-primary">Register</button>
@@ -84,8 +85,25 @@
             </section>
         </div>
     </div>
-
 </div>
+
+@if (showConfirmation)
+{
+    @if (!string.IsNullOrEmpty(EmailConfirmationUrl))
+    {
+        <p>
+            This app does not currently have a real email sender registered, see <a href="https://aka.ms/aspaccountconf">these docs</a> for how to configure a real email sender.
+            Normally this would be emailed: <a id="confirm-link" href="@EmailConfirmationUrl">Click here to confirm your account</a>
+        </p>
+    }
+    else
+    {
+        <p>
+            Please check your email to confirm your account.
+        </p>
+    }
+}
+
 
 
 @code {
@@ -93,6 +111,9 @@
     public InputModel Input { get; set; } = new InputModel();
 
     public string ReturnUrl { get; set; }
+
+    public string EmailConfirmationUrl { get; set; }
+    public bool showConfirmation { get; set; }
 
     public IList<AuthenticationScheme>
         ExternalLogins
@@ -124,65 +145,59 @@
     }
 
     /// <summary>
-    /// Technically, UserManager and SignInManager are not supported in Razor. 
+    /// Technically, UserManager and SignInManager are not supported in Razor.
     /// And SignInManager.SignInAsync definitely won't work.
     /// But they seem to work the rest of the time.  Let's give them a chance
     /// </summary>
     public async void OnValidSubmit()
     {
-        //Url is part of PageModel, we'll use an alternative.
-        //ReturnUrl = ReturnUrl ?? Url.Content("~/");
-        ReturnUrl = ReturnUrl ?? "/";
+        try
+        { // Lots of things to go wrong, we better catching and reporting
+          //Url is part of PageModel, we'll use an alternative.
+          //ReturnUrl = ReturnUrl ?? Url.Content("~/");
+            ReturnUrl = ReturnUrl ?? "/";
 
-        ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
-        //if (ModelState.IsValid)
-        //{
+            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
-        // Sign up the new user
-        var user = new BlazorServerIdentityUser { UserName = Input.Email, Email = Input.Email };
-        var result = await _userManager.CreateAsync(user, Input.Password);
-        if (result.Succeeded)
-        {
+            // Sign up the new user
+            var user = new BlazorServerIdentityUser { UserName = Input.Email, Email = Input.Email };
+            // Actually writing the user details to database
+            var result = await _userManager.CreateAsync(user, Input.Password);
+            // If it failed generate error and exit
+            if (!result.Succeeded)
+            {
+                // The <EditForm> is valid, but the transaction failed for some reason.
+                // This is NOT a form validation error. One common case is the user already exists, and results in a DB error.
+                // Will leave it at ValidationSummary for now and work applying EditContext later.
+                return;
+            }
             _logger.LogInformation("User created a new account with password.");
 
+            // Configuration is for a confirmed email before Sign In is allowed.
             // Now set about mimicking sending a confirmation email
-            // But wait, there is a better.  With Blazor, I can just chain to another component to do this.
-            // For now, will deprecate everything else.
 
-            //    var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            //    code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-            //    var callbackUrl = Url.Page(
-            //    "/Account/ConfirmEmail",
-            //    pageHandler: null,
-            //    values: new { area = "Identity", userId = user.Id, code = code },
-            //    protocol: Request.Scheme);
+            var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
 
-            //    await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-            //    $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
-
-            //    if (_userManager.Options.SignIn.RequireConfirmedAccount)
-            //    {
-            //        return RedirectToPage("RegisterConfirmation", new { email = Input.Email });
-            //    }
-            //    else
-            //    {
-            //        await _signInManager.SignInAsync(user, isPersistent: false);
-            //        return LocalRedirect(returnUrl);
-            //    }
-            //}
-            //foreach (var error in result.Errors)
-            //{
-            //    ModelState.AddModelError(string.Empty, error.Description);
-            //}
+            var queryparams = new Dictionary<string, string>()
+        {
+                {"userid", user.Id },
+                { "code", code}
+            };
+            EmailConfirmationUrl = QueryHelpers.AddQueryString(navman.BaseUri + "SignUpConfirmEmail", queryparams);
+            showConfirmation = true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(":OnValidSubmit: Error={0}", ex.Message);
+            throw ex;
         }
 
-        //// If we got this far, something failed, redisplay form
-        //return Page();
     }
 
     public void OnInvalidSubmit()
     {
-
+        return;
     }
 
 }
