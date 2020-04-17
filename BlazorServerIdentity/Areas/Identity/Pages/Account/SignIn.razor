@@ -52,12 +52,13 @@
     @if (isResponseState)
         @if (isSuccessful)
         {
-            <h1 class="text-primary">Success!</h1>
+            <h1 class="text-primary">@responseMessage</h1>
         }
         else
         {
-            <h1 class="text-danger">An Error Occurred</h1>
+            <h1 class="text-danger">@responseMessage</h1>
         }
+
 </div>
 
 
@@ -65,6 +66,7 @@
 
     private bool isSuccessful;
     private bool isResponseState;
+    private string responseMessage;
 
 
     // https://chrissainty.com/working-with-query-strings-in-blazor/
@@ -83,9 +85,14 @@
         {
             isSuccessful = Convert.ToBoolean(_boolVar);
             isResponseState = true;
+            QueryHelpers.ParseQuery(uri.Query).TryGetValue("message", out var vstring);
+            responseMessage = vstring;
         }
         else
+        {
             isResponseState = false;
+            responseMessage = null;
+        }
     }
 
     // Borrowed from Login.cshtml

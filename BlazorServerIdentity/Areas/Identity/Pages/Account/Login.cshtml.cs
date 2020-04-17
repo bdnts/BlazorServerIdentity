@@ -127,27 +127,30 @@ namespace BlazorServerIdentity.Areas.Identity.Pages.Account
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User logged in.");
-                    var retUrl = QueryHelpers.AddQueryString(returnUrl, query);
-
-                    return LocalRedirect(retUrl);
-                }
-                if (result.RequiresTwoFactor)
+                }else if(result.IsNotAllowed)
                 {
-                    return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
-                }
-                if (result.IsLockedOut)
+                    _logger.LogWarning("Use email not verified.");
+                    query["isSuccessful"] = "false";
+                    query["message"] = "Sign In Requires Verified Email";
+                }else if (result.RequiresTwoFactor)
+                {
+                    _logger.LogWarning("User account Requies 2FA");
+                    query["isSuccessful"] = "false";
+                    query["message"] = "Sign In Requires 2 Factor Authentication";
+                }else  if (result.IsLockedOut)
                 {
                     _logger.LogWarning("User account locked out.");
-                    return RedirectToPage("./Lockout");
+                    query["isSuccessful"] = "false";
+                    query["message"] = "User Account Locked Out";
                 }
                 else
                 {
-                    query["isSuccessful"] = "false";
-                    query["message"] = "General Error";
                     _logger.LogInformation("Login unsuccessful, General Error");
-                    var retUrl = QueryHelpers.AddQueryString(returnUrl, query);
-                    return LocalRedirect(retUrl);
+                    query["isSuccessful"] = "false";
+                    query["message"] = "An Error Occured.";
                 }
+                var retUrl = QueryHelpers.AddQueryString(returnUrl, query);
+                return LocalRedirect(retUrl);
             }
 
             // If we got this far, something failed, redisplay form
