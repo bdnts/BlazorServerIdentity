@@ -6,7 +6,7 @@
 @inject NavigationManager navman;
 @*Not supported in Blazor*@
 @inject UserManager<BlazorServerIdentityUser> _userManager
-
+<h1 class="text-center">Sign In</h1>
 <div class="container text-center">
     <EditForm Model="@Input" OnValidSubmit="@ValidSubmit" OnInvalidSubmit="@InvalidSubmit">
         <DataAnnotationsValidator />
