@@ -17,6 +17,11 @@
 @using Microsoft.AspNetCore.WebUtilities;
 @using Microsoft.Extensions.Logging;
 
+@inject SignInManager<BlazorServerIdentityUser> _signInManager;
+@inject UserManager<BlazorServerIdentityUser> _userManager;
+@inject ILogger<SignUp> _logger;
+@inject IEmailSender _emailSender;
+
 <h1 class="text-center">Sign Up</h1>
 
 <div class="container text-center">
@@ -30,19 +35,19 @@
                 <div class="form-group">
                     <label>
                         Email Address
-                        <InputText @bind-Value="Input.Email"  />
-                    </label> 
+                        <InputText @bind-Value="Input.Email" />
+                    </label>
                 </div>
                 <div class="form-group">
                     <label>
                         Password
-                        <InputText @bind-Value="Input.Password"  />
+                        <InputText @bind-Value="Input.Password" />
                     </label>
                 </div>
                 <div class="form-group">
                     <label>
                         Confirm Password
-                        <InputText @bind-Value="Input.ConfirmPassword"  />
+                        <InputText @bind-Value="Input.ConfirmPassword" />
                     </label>
                 </div>
                 <button type="submit" class="btn btn-primary">Register</button>
@@ -86,35 +91,14 @@
 @code {
 
     [AllowAnonymous]
-    private readonly SignInManager<BlazorServerIdentityUser>
-    _signInManager;
-    private readonly UserManager<BlazorServerIdentityUser>
-        _userManager;
-    private readonly ILogger<RegisterModel>
-        _logger;
-    private readonly IEmailSender _emailSender;
-
-    public RegisterModel(
-    UserManager<BlazorServerIdentityUser>
-        userManager,
-        SignInManager<BlazorServerIdentityUser>
-            signInManager,
-            ILogger<RegisterModel>
-                logger,
-                IEmailSender emailSender)
-    {
-        _userManager = userManager;
-        _signInManager = signInManager;
-        _logger = logger;
-        _emailSender = emailSender;
-    }
 
     public InputModel Input { get; set; } = new InputModel();
 
     public string ReturnUrl { get; set; }
 
     public IList<AuthenticationScheme>
-        ExternalLogins { get; set; }
+        ExternalLogins
+    { get; set; }
 
     public class InputModel
     {
