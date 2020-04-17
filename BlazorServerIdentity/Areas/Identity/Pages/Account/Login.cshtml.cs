@@ -76,7 +76,7 @@ namespace BlazorServerIdentity.Areas.Identity.Pages.Account
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
-            returnUrl = returnUrl ?? Url.Content("~/");
+            returnUrl ??= Url.Content("~/");
 
             if (ModelState.IsValid)
             {
@@ -110,13 +110,12 @@ namespace BlazorServerIdentity.Areas.Identity.Pages.Account
 
         public async Task<IActionResult> OnGetAsync(string returnUrl, string email, string password, string rememberme)
         {
-            returnUrl = returnUrl ?? Url.Content("~/");
+            returnUrl ??= Url.Content("~/");
             var query = new Dictionary<string, string>
             {
                 { "isSuccessful", "true" },
                 { "message", "Success" },
             };
-
 
             if (Input == null) Input = new InputModel() { Email = email, Password = password, RememberMe = Convert.ToBoolean(rememberme) };
 
@@ -152,7 +151,11 @@ namespace BlazorServerIdentity.Areas.Identity.Pages.Account
             }
 
             // If we got this far, something failed, redisplay form
-            return Page();
+            query["isSuccessful"] = "false";
+            query["message"] = "General Error";
+            _logger.LogInformation("Login unsuccessful, General Error");
+            var lastRetUrl = QueryHelpers.AddQueryString(returnUrl, query);
+            return LocalRedirect(lastRetUrl);
         }
 
     }
